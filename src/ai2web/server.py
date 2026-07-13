@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Optional
 import re
 
 from .negotiator import negotiate
+from .schema import validate_schema
 
 _CORS = {
     "access-control-allow-origin": "*",
@@ -38,6 +39,8 @@ def handle(
     manifest = opts["manifest"]
     modules: Dict[str, Callable] = opts.get("modules") or {}
     actions: Dict[str, Callable] = opts.get("actions") or {}
+    validate_input = opts.get("validate_input", True)
+    declared_actions = {a.get("name"): a for a in (manifest.get("actions") or [])}
 
     path = ("/" + path.strip("/")) if path.strip("/") else "/"
     method = method.upper()
@@ -66,6 +69,11 @@ def handle(
         fn = actions.get(name)
         if not fn:
             return _error(404, "unsupported_capability", f"Unknown action '{name}'.")
+        declared = declared_actions.get(name)
+        if validate_input and declared and declared.get("input_schema"):
+            result = validate_schema(body if body is not None else {}, declared["input_schema"])
+            if not result.valid:
+                return _error(400, "invalid_request", "Request does not match the declared input schema: " + "; ".join(result.errors) + ".")
         return _json(200, fn(body))
 
     m = _MODULE_RE.match(path)

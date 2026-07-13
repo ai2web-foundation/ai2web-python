@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from ai2web import ai2web, validate, negotiate, handle, is_safe_public_url  # noqa: E402
+from ai2web import ai2web, validate, negotiate, handle, is_safe_public_url, validate_schema  # noqa: E402
 
 failures = 0
 
@@ -90,6 +90,32 @@ for c in cases:
             if not chk or chk["ok"]:
                 probs.append(f"expected warn '{w}'")
     check(not probs, "conformance: " + c["name"], probs or None)
+
+# --- request validation (validate_schema + server) ---
+_s = {"type": "object", "properties": {"order_id": {"type": "string"}, "qty": {"type": "integer"}}, "required": ["order_id"]}
+check(validate_schema({"order_id": "A1", "qty": 2}, _s).valid, "schema: valid input passes")
+check(not validate_schema({"qty": 2}, _s).valid, "schema: missing required fails")
+check(not validate_schema({"order_id": 5}, _s).valid, "schema: wrong type fails")
+check(not validate_schema({"order_id": "A1", "qty": 1.5}, _s).valid, "schema: non-integer fails")
+check(validate_schema({"anything": 1}, {}).valid, "schema: empty schema accepts anything")
+
+_man = {
+    "protocol": "ai2w", "version": "0.1",
+    "site": {"name": "S", "url": "https://s.example", "type": "ecommerce"},
+    "capabilities": {"actions": {"enabled": True}},
+    "actions": [{
+        "name": "track_order", "method": "POST", "endpoint": "/ai2w/actions/track-order",
+        "requires_auth": False, "requires_user_approval": False, "risk": "low",
+        "input_schema": {"type": "object", "properties": {"order_id": {"type": "string"}}, "required": ["order_id"]},
+    }],
+}
+_acts = {"track_order": lambda b: {"ok": True}}
+_ok = handle({"manifest": _man, "actions": _acts}, "POST", "/ai2w/actions/track-order", {"order_id": "A1"})
+_bad = handle({"manifest": _man, "actions": _acts}, "POST", "/ai2w/actions/track-order", {})
+_off = handle({"manifest": _man, "actions": _acts, "validate_input": False}, "POST", "/ai2w/actions/track-order", {})
+check(_ok["status"] == 200, "server: valid body -> 200", _ok)
+check(_bad["status"] == 400 and _bad["body"]["error"]["code"] == "invalid_request", "server: missing required -> 400 invalid_request", _bad["body"])
+check(_off["status"] == 200, "server: validate_input=False opt-out passes through", _off)
 
 print("\n" + ("ALL PASS" if failures == 0 else f"{failures} FAILED"))
 sys.exit(0 if failures == 0 else 1)
