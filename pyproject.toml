@@ -1,12 +1,26 @@
 [project]
 name = "ai2web"
-version = "0.2.0"
+version = "0.2.1"
 description = "AI2Web (ai2w) Python SDK - capability model, manifest builder, validator, negotiation, server handler."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "AI2Web Foundation" }]
 keywords = ["ai2web", "ai2w", "ai", "agents", "mcp", "protocol"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = []
 
 [project.urls]

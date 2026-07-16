@@ -10,7 +10,7 @@ from .server import handle
 from .safety import is_safe_public_url, assert_safe_public_url, same_origin
 from .schema import validate_schema, SchemaResult
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "Manifest",
