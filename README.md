@@ -1,8 +1,14 @@
 # AI2Web Python SDK (`ai2web`)
 
 [![CI](https://github.com/ai2web-foundation/ai2web-python/actions/workflows/ci.yml/badge.svg)](https://github.com/ai2web-foundation/ai2web-python/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/ai2web)](https://pypi.org/project/ai2web/)
+[![Python versions](https://img.shields.io/pypi/pyversions/ai2web)](https://pypi.org/project/ai2web/)
 
 The Python reference implementation of the [AI2Web protocol](https://github.com/ai2web-foundation/ai2web-spec) - for Django, Flask, FastAPI, or plain Python. Mirrors `@ai2web/core`.
+
+```bash
+pip install ai2web
+```
 
 ```python
 from ai2web import ai2web, validate, handle
