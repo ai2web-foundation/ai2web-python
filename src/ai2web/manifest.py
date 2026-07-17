@@ -8,7 +8,7 @@ import json
 
 class Manifest:
     def __init__(self, site: Dict[str, Any]):
-        self._m: Dict[str, Any] = {"protocol": "ai2w", "version": "0.1", "site": site, "capabilities": {}}
+        self._m: Dict[str, Any] = {"protocol": "ai2w", "version": "0.2", "site": site, "capabilities": {}}
 
     @classmethod
     def for_site(cls, name: str, url: str, type: str, **extra: Any) -> "Manifest":
@@ -52,6 +52,27 @@ class Manifest:
 
     def contact(self, c: Dict[str, Any]) -> "Manifest":
         self._m["contact"] = c
+        return self
+
+    # v0.2 optional modules (all additive; a minimal manifest stays valid without them).
+    def governance(self, g: Dict[str, Any]) -> "Manifest":
+        self._m["governance"] = g
+        return self
+
+    def usage_policy(self, u: Dict[str, Any]) -> "Manifest":
+        self._m["usage_policy"] = u
+        return self
+
+    def legal(self, l: Dict[str, Any]) -> "Manifest":
+        self._m["legal"] = l
+        return self
+
+    def agent_identity(self, a: Dict[str, Any]) -> "Manifest":
+        self._m["identity"] = {**(self._m.get("identity") or {}), "agent": a}
+        return self
+
+    def knowledge(self, k: List[Dict[str, Any]]) -> "Manifest":
+        self._m["knowledge"] = k
         return self
 
     def extend(self, key: str, value: Any) -> "Manifest":

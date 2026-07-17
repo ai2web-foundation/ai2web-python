@@ -10,7 +10,10 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from ai2web import ai2web, validate, negotiate, handle, is_safe_public_url, validate_schema  # noqa: E402
+from ai2web import (  # noqa: E402
+    ai2web, validate, negotiate, handle, is_safe_public_url, validate_schema,
+    to_llms_txt, to_agent_json,
+)
 
 failures = 0
 
@@ -116,6 +119,70 @@ _off = handle({"manifest": _man, "actions": _acts, "validate_input": False}, "PO
 check(_ok["status"] == 200, "server: valid body -> 200", _ok)
 check(_bad["status"] == 400 and _bad["body"]["error"]["code"] == "invalid_request", "server: missing required -> 400 invalid_request", _bad["body"])
 check(_off["status"] == 200, "server: validate_input=False opt-out passes through", _off)
+
+# --- v0.2 modules + export adapters (parity with @ai2web/core) ---
+m2 = (
+    ai2web({"name": "Example Bistro", "url": "https://bistro.example", "type": "restaurant",
+            "description": "Italian, terrace dining."})
+    .capability("content")
+    .capability("commerce", {"endpoint": "/ai2w/products"})
+    .capability("search", {"endpoint": "/ai2w/search"})
+    .action({"name": "book_table", "description": "Reserve a table.", "method": "POST",
+             "endpoint": "/ai2w/actions/book-table", "requires_auth": False, "requires_user_approval": True,
+             "risk": "medium", "intent": "reserve_table",
+             "input_schema": {"type": "object", "properties": {"date": {"type": "string"}, "party": {"type": "integer"}},
+                              "required": ["date", "party"]},
+             "bindings": [{"kind": "mcp", "ref": "book_table", "priority": 1},
+                          {"kind": "redirect", "ref": "/reserve", "priority": 9, "fallback_only": True}]})
+    .knowledge([{"id": "menu", "name": "Menu", "kind": "catalog", "ref": "/ai2w/products", "format": "json"}])
+    .governance({"rate_limits": {"requests": 60, "window_seconds": 60}, "consent_mode": {"book_table": "explicit"}})
+    .usage_policy({"bulk_extraction": False, "model_training": False})
+    .legal({"jurisdiction": "EU", "ai_transparency": True, "ai_risk_classification": "limited"})
+    .agent_identity({"required": False, "allow_anonymous": True, "methods": ["http_message_signatures"]})
+    .contact({"support": "hi@bistro.example"})
+    .build()
+)
+check(m2["version"] == "0.2", "builder defaults to version 0.2", m2["version"])
+check(m2["governance"]["rate_limits"]["requests"] == 60, "builder: governance")
+check(m2["usage_policy"]["model_training"] is False, "builder: usage_policy")
+check(m2["legal"]["ai_risk_classification"] == "limited", "builder: legal")
+check(m2["identity"]["agent"]["methods"][0] == "http_message_signatures", "builder: agent identity")
+check(m2["knowledge"][0]["id"] == "menu", "builder: knowledge")
+check(m2["actions"][0]["intent"] == "reserve_table", "action: intent")
+check(len(m2["actions"][0]["bindings"]) == 2, "action: bindings")
+check(m2["actions"][0]["bindings"][1]["fallback_only"] is True, "action: fallback_only binding")
+
+txt = to_llms_txt(m2)
+check(txt.startswith("# Example Bistro"), "llms.txt: title")
+check("## Capabilities" in txt and "- commerce" in txt, "llms.txt: capabilities")
+check("## Knowledge" in txt and "Menu" in txt, "llms.txt: knowledge")
+check("book_table: Reserve a table." in txt, "llms.txt: action")
+check("https://bistro.example/ai2w" in txt, "llms.txt: discovery link")
+
+aj = to_agent_json(m2)
+check(aj["name"] == "Example Bistro", "agent.json: name")
+check("commerce" in aj["capabilities"], "agent.json: capabilities")
+check(aj["actions"][0]["intent"] == "reserve_table", "agent.json: action intent")
+check(len(aj["actions"][0]["bindings"]) == 2, "agent.json: bindings preserved")
+check(aj["policies"]["legal"]["jurisdiction"] == "EU", "agent.json: legal in policies")
+check(aj["policies"]["governance"]["consent_mode"]["book_table"] == "explicit", "agent.json: governance carried")
+# action without explicit bindings falls back to a rest binding on its endpoint
+_aj_default = to_agent_json(ai2web({"name": "X", "url": "https://x.example", "type": "site"})
+                            .action({"name": "a", "description": "d", "method": "POST", "endpoint": "/ai2w/actions/a",
+                                     "requires_auth": False, "requires_user_approval": False, "risk": "low"}).build())
+check(_aj_default["actions"][0]["bindings"][0]["kind"] == "rest", "agent.json: default rest binding")
+
+# --- multi-surface serving (llms.txt + agent.json) ---
+_srv = {"manifest": m2}
+_llms = handle(_srv, "GET", "/llms.txt")
+check(_llms["status"] == 200 and _llms["headers"]["content-type"].startswith("text/plain"), "server: /llms.txt text/plain", _llms["status"])
+check(isinstance(_llms["body"], str) and _llms["body"].startswith("# Example Bistro"), "server: /llms.txt body")
+_ajr = handle(_srv, "GET", "/.well-known/agent.json")
+check(_ajr["status"] == 200 and _ajr["body"]["name"] == "Example Bistro", "server: /.well-known/agent.json", _ajr["status"])
+_ajr2 = handle(_srv, "GET", "/agent.json")
+check(_ajr2["status"] == 200 and _ajr2["body"]["policies"]["governance"]["rate_limits"]["requests"] == 60, "server: /agent.json alias + governance")
+_llpost = handle(_srv, "POST", "/llms.txt")
+check(_llpost["status"] == 405, "server: /llms.txt POST -> 405")
 
 print("\n" + ("ALL PASS" if failures == 0 else f"{failures} FAILED"))
 sys.exit(0 if failures == 0 else 1)

@@ -9,8 +9,9 @@ from .negotiator import negotiate
 from .server import handle
 from .safety import is_safe_public_url, assert_safe_public_url, same_origin
 from .schema import validate_schema, SchemaResult
+from .export import to_llms_txt, to_agent_json
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 __all__ = [
     "Manifest",
@@ -25,4 +26,6 @@ __all__ = [
     "same_origin",
     "validate_schema",
     "SchemaResult",
+    "to_llms_txt",
+    "to_agent_json",
 ]

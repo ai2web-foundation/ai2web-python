@@ -45,6 +45,11 @@ res = handle({"manifest": manifest}, method, path, body, origin)
 - `ai2web.negotiator` - `negotiate()` capability negotiation (spec §5).
 - `ai2web.server` - `handle()` framework-agnostic route handler.
 - `ai2web.safety` - `is_safe_public_url()` / `assert_safe_public_url()` SSRF guard.
+- `ai2web.export` - `to_llms_txt()` / `to_agent_json()` projections of the manifest (RFC-0015).
+
+The builder also carries the v0.2 optional modules - `.governance(...)`, `.usage_policy(...)`,
+`.legal(...)`, `.agent_identity(...)`, `.knowledge(...)` - and actions accept `intent` and
+`bindings`. All are additive: a minimal manifest stays valid without them.
 
 ## Test
 ```bash

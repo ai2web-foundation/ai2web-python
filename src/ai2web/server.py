@@ -10,6 +10,7 @@ import re
 
 from .negotiator import negotiate
 from .schema import validate_schema
+from .export import to_llms_txt, to_agent_json
 
 _CORS = {
     "access-control-allow-origin": "*",
@@ -27,6 +28,10 @@ def _json(status: int, body: Any) -> Dict[str, Any]:
 
 def _error(status: int, code: str, message: str, retryable: bool = False) -> Dict[str, Any]:
     return _json(status, {"error": {"code": code, "message": message, "retryable": retryable}})
+
+
+def _text(status: int, content_type: str, body: str) -> Dict[str, Any]:
+    return {"status": status, "headers": {"content-type": content_type, **_CORS}, "body": body}
 
 
 def handle(
@@ -57,6 +62,17 @@ def handle(
         if method != "GET":
             return _error(405, "invalid_request", "Use GET for the manifest.")
         return _json(200, manifest)
+
+    # Multi-surface projections (RFC-0015): the one canonical manifest, emitted in other
+    # discovery formats so agents that speak llms.txt or agent.json need not parse ai2w first.
+    if path == "/llms.txt":
+        if method != "GET":
+            return _error(405, "invalid_request", "Use GET for llms.txt.")
+        return _text(200, "text/plain; charset=utf-8", to_llms_txt(manifest))
+    if path in ("/.well-known/agent.json", "/agent.json"):
+        if method != "GET":
+            return _error(405, "invalid_request", "Use GET for agent.json.")
+        return _json(200, to_agent_json(manifest))
 
     if path == "/ai2w/negotiate":
         b = body if isinstance(body, dict) else {}
