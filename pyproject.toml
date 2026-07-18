@@ -1,6 +1,6 @@
 [project]
 name = "ai2web"
-version = "0.3.0"
+version = "0.3.1"
 description = "AI2Web (ai2w) Python SDK - capability model, manifest builder, validator, negotiation, server handler."
 readme = "README.md"
 requires-python = ">=3.9"
