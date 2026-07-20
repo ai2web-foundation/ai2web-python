@@ -220,6 +220,9 @@ _t = ap2.transport()
 check(_t["enabled"] is True and _t["version"] == "0.2.0", "ap2: transport advertises version")
 check("ap2" in _t["extension"], "ap2: transport carries the extension uri")
 
+_golden = {"z": "a/b", "currency": "GBP", "n": 10.0, "items": [{"value": 9.99, "label": "Mug"}], "ok": True}
+check(ap2.canonical(_golden) == '{"currency":"GBP","items":[{"label":"Mug","value":9.99}],"n":10,"ok":true,"z":"a/b"}', "ap2: JCS canonical is cross-SDK stable", ap2.canonical(_golden))
+
 _intent = ap2.intent_mandate("a red basketball shoe", skus=["SHOE-1"], now=1000)
 check(_intent["natural_language_description"] == "a red basketball shoe" and _intent["skus"] == ["SHOE-1"] and bool(_intent["intent_expiry"]), "ap2: intent mandate built")
 

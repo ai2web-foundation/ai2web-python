@@ -218,9 +218,64 @@ def payment_details(payment_mandate: Dict[str, Any]) -> Dict[str, Any]:
 
 # --- pure-stdlib RSA / encoding helpers --------------------------------------
 
+def canonical(data: Any) -> str:
+    """JCS (RFC 8785) canonicalisation, so a cart_hash is byte-identical across every SDK:
+    object keys sorted, no whitespace, minimal string escaping, integers without a decimal
+    point, currency amounts as a short decimal."""
+    if data is None:
+        return "null"
+    if data is True:
+        return "true"
+    if data is False:
+        return "false"
+    if isinstance(data, int):
+        return str(data)
+    if isinstance(data, float):
+        return _jcs_number(data)
+    if isinstance(data, str):
+        return _jcs_string(data)
+    if isinstance(data, (list, tuple)):
+        return "[" + ",".join(canonical(x) for x in data) + "]"
+    if isinstance(data, dict):
+        keys = sorted(str(k) for k in data.keys())
+        return "{" + ",".join(_jcs_string(k) + ":" + canonical(data[k]) for k in keys) + "}"
+    return "null"
+
+
 def _canonical(data: Any) -> bytes:
-    # Compact, key-order-preserving, unescaped - matches the other SDKs' canonicalisation.
-    return json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return canonical(data).encode("utf-8")
+
+
+def _jcs_number(x: float) -> str:
+    if x == int(x) and abs(x) < 1e15:
+        return str(int(x))
+    return f"{x:.2f}".rstrip("0").rstrip(".")
+
+
+def _jcs_string(s: str) -> str:
+    out = ['"']
+    for ch in s:
+        o = ord(ch)
+        if ch == '"':
+            out.append('\\"')
+        elif ch == "\\":
+            out.append("\\\\")
+        elif o == 0x08:
+            out.append("\\b")
+        elif o == 0x09:
+            out.append("\\t")
+        elif o == 0x0A:
+            out.append("\\n")
+        elif o == 0x0C:
+            out.append("\\f")
+        elif o == 0x0D:
+            out.append("\\r")
+        elif o < 0x20:
+            out.append("\\u%04x" % o)
+        else:
+            out.append(ch)
+    out.append('"')
+    return "".join(out)
 
 
 def _b64url(raw: bytes) -> str:
