@@ -250,5 +250,20 @@ _pd = ap2.payment_details({"payment_mandate_contents": {
 }})
 check(_pd["payment_details_id"] == "pr_x" and _pd["method"] == "card" and _pd["payer_email"] == "a@b.com", "ap2: payment mandate parsed")
 
+# NLWeb (nlweb.ai) interop
+from ai2web import nlweb  # noqa: E402
+
+_nlt = nlweb.transport()
+check(_nlt["enabled"] is True and _nlt["version"] == "0.55" and bool(_nlt["ask"]), "nlweb: transport advertises ask endpoint")
+
+_nlr = nlweb.ask_response("red shoes", [
+    {"url": "https://s.example/p/1", "name": "Red Shoe", "description": "A red running shoe", "score": 90},
+    {"url": "https://s.example/p/2", "title": "Crimson Sneaker"},
+], site="store")
+check(_nlr["results"][0]["@type"] == "Item", "nlweb: results are schema.org Items", _nlr["results"][0])
+check(_nlr["results"][0]["name"] == "Red Shoe" and _nlr["results"][0]["score"] == 90 and _nlr["results"][0]["site"] == "store", "nlweb: item fields mapped")
+check(_nlr["results"][1]["name"] == "Crimson Sneaker" and _nlr["results"][1]["schema_object"]["@type"] == "Thing", "nlweb: title falls back to name + schema_object built")
+check(len(_nlr["results"]) == 2 and _nlr["query"] == "red shoes", "nlweb: ask response envelope")
+
 print("\n" + ("ALL PASS" if failures == 0 else f"{failures} FAILED"))
 sys.exit(0 if failures == 0 else 1)
