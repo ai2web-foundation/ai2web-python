@@ -9,6 +9,8 @@
 
 # AI2Web Python SDK (`ai2web`)
 
+[![AI2Web on Launchpadly - Product of the Week (Gold)](https://launchpadly.co/embed/badges/startup/ai2web.svg?variant=product-week-gold)](https://launchpadly.co/startup/ai2web?ref=badge)
+
 [![CI](https://github.com/ai2web-foundation/ai2web-python/actions/workflows/ci.yml/badge.svg)](https://github.com/ai2web-foundation/ai2web-python/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/ai2web)](https://pypi.org/project/ai2web/)
 [![Python versions](https://img.shields.io/pypi/pyversions/ai2web)](https://pypi.org/project/ai2web/)
