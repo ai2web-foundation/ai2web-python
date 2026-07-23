@@ -7,7 +7,8 @@ rather than misstated. The canonical /ai2w manifest stays authoritative for exec
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 
 def _enabled(v: Any) -> bool:
@@ -94,3 +95,73 @@ def to_agent_json(m: Dict[str, Any]) -> Dict[str, Any]:
             "legal": m.get("legal"),
         },
     }
+
+
+def to_oauth_protected_resource(m: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """OAuth 2.0 Protected Resource metadata (RFC 9728), for
+    ``/.well-known/oauth-protected-resource``. MCP clients read this to discover which
+    authorization server guards the resource before starting a flow.
+
+    Returns ``None`` when the site does not advertise oauth2, so an auth surface the site
+    cannot honour is never published.
+    """
+    auth = m.get("auth") or {}
+    if "oauth2" not in (auth.get("methods") or []):
+        return None
+    base = _trim_url(str((m.get("site") or {}).get("url", "")))
+    oauth2 = auth.get("oauth2") or {}
+    issuer = base
+    authz = oauth2.get("authorization_url")
+    if authz:
+        parts = urlparse(str(authz))
+        if parts.scheme and parts.netloc:
+            issuer = f"{parts.scheme}://{parts.netloc}"
+    doc: Dict[str, Any] = {
+        "resource": f"{base}/ai2w",
+        "authorization_servers": [issuer],
+        "bearer_methods_supported": ["header"],
+    }
+    scopes = oauth2.get("scopes")
+    if scopes:
+        doc["scopes_supported"] = list(scopes)
+    return doc
+
+
+def to_content_signals(m: Dict[str, Any]) -> Optional[str]:
+    """Map ``usage_policy`` onto Content Signals tokens.
+
+    ``search`` stays ``yes`` because AI2Web exists to be discoverable; the AI signals are only
+    asserted when the manifest states them, so an unset policy is never reported as a refusal.
+    Returns ``None`` when no policy is declared.
+    """
+    p = m.get("usage_policy")
+    if not isinstance(p, dict) or not p:
+        return None
+    signals = ["search=yes"]
+    if isinstance(p.get("content_reproduction"), bool):
+        signals.append("ai-input=" + ("yes" if p["content_reproduction"] else "no"))
+    if isinstance(p.get("model_training"), bool):
+        signals.append("ai-train=" + ("yes" if p["model_training"] else "no"))
+    return ", ".join(signals)
+
+
+def to_robots_txt(m: Dict[str, Any]) -> str:
+    """A robots.txt FRAGMENT carrying the usage policy and a pointer to the manifest.
+
+    Append it to an existing robots.txt; it is never a replacement, and emits no Disallow rules.
+    """
+    base = _trim_url(str((m.get("site") or {}).get("url", "")))
+    signals = to_content_signals(m)
+    lines = [f"# AI2Web usage policy, projected from {base}/ai2w", "User-agent: *"]
+    if signals is not None:
+        lines.append(f"Content-Signal: {signals}")
+    if (m.get("usage_policy") or {}).get("bulk_extraction") is False:
+        lines.append("# bulk_extraction: false - please use the /ai2w endpoints instead of crawling")
+    lines.append(f"# AI2Web-Manifest: {base}/ai2w")
+    return "\n".join(lines) + "\n"
+
+
+def to_discovery_link_header(m: Dict[str, Any]) -> str:
+    """Value for an HTTP ``Link`` header advertising the manifest to non-HTML clients."""
+    base = _trim_url(str((m.get("site") or {}).get("url", "")))
+    return f'<{base}/ai2w>; rel="ai2w"'

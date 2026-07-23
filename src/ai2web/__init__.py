@@ -9,11 +9,18 @@ from .negotiator import negotiate
 from .server import handle
 from .safety import is_safe_public_url, assert_safe_public_url, same_origin
 from .schema import validate_schema, SchemaResult
-from .export import to_llms_txt, to_agent_json
+from .export import (
+    to_llms_txt,
+    to_agent_json,
+    to_oauth_protected_resource,
+    to_content_signals,
+    to_robots_txt,
+    to_discovery_link_header,
+)
 from . import ap2
 from . import nlweb
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
 
 __all__ = [
     "Manifest",
@@ -30,6 +37,10 @@ __all__ = [
     "SchemaResult",
     "to_llms_txt",
     "to_agent_json",
+    "to_oauth_protected_resource",
+    "to_content_signals",
+    "to_robots_txt",
+    "to_discovery_link_header",
     "ap2",
     "nlweb",
 ]
